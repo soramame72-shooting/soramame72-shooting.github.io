@@ -80,7 +80,6 @@ let bullets = [], bossBullets = [], enemies = [];
 let rewardMessage = '';
 let highScore = localStorage.getItem('touhouHighScore') || 0;
 
-// プレイヤー
 const player = {
   x: canvas.width / 2,
   y: canvas.height - 100,
@@ -91,29 +90,30 @@ const player = {
   shield: false,
   image: new Image(),
 };
-player.image.src = 'player.png'; // プレイヤーの画像
+player.image.src = 'player.png';
 
-// ボス
 const boss = {
   x: canvas.width / 2 - 50,
   y: 100,
   width: 100,
   height: 100,
-  hp: 10000,  // 体力を10000に変更
+  hp: 10000,
   maxHp: 10000,
   attackTimer: 0,
   attackInterval: 60,
+  targetX: Math.random() * canvas.width,
+  targetY: Math.random() * canvas.height,
+  speed: 2,
   attackPattern: '',
   spellActive: false,
   image: new Image(),
 };
-boss.image.src = 'boss.png'; // ボスの画像
+boss.image.src = 'boss.png';
 
 let keys = {};
 window.addEventListener('keydown', e => keys[e.key] = true);
 window.addEventListener('keyup', e => keys[e.key] = false);
 
-// 弾クラス
 class Bullet {
   constructor(x, y, speed, angle, fromBoss = false, isLarge = false) {
     this.x = x;
@@ -121,7 +121,7 @@ class Bullet {
     this.speed = speed;
     this.angle = angle;
     this.fromBoss = fromBoss;
-    this.isLarge = isLarge; // 大きさを管理
+    this.isLarge = isLarge;
   }
   update() {
     this.x += Math.cos(this.angle) * this.speed;
@@ -129,35 +129,32 @@ class Bullet {
   }
   draw() {
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.isLarge ? 10 : 5, 0, Math.PI * 2); // 大きさを変更
+    ctx.arc(this.x, this.y, this.isLarge ? 10 : 5, 0, Math.PI * 2);
     ctx.fillStyle = this.fromBoss ? 'red' : 'cyan';
     ctx.fill();
   }
 }
 
-// 雑魚敵クラス
 class Enemy {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.width = 30;  // サイズを大きくしました
-    this.height = 30; // サイズを大きくしました
+    this.width = 30;
+    this.height = 30;
     this.hp = 30;
     this.speed = 2 + Math.random() * 1;
     this.image = new Image();
-    this.image.src = 'enemy.png'; // 敵の画像
+    this.image.src = 'enemy.png';
   }
   update() {
-    // 敵をランダムに動かす
-    this.x += Math.random() * 2 - 1; // 横方向にランダムに動く
-    this.y += this.speed; // 縦方向に進む
+    this.x += Math.random() * 2 - 1;
+    this.y += this.speed;
   }
   draw() {
     ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
   }
 }
 
-// スペルカード演出（背景点滅）
 function drawSpellEffect() {
   if (boss.spellActive) {
     ctx.fillStyle = 'rgba(255, 0, 255, 0.1)';
@@ -165,7 +162,6 @@ function drawSpellEffect() {
   }
 }
 
-// プレイヤー移動＆攻撃
 function updatePlayer() {
   if (keys['ArrowUp'] || keys['w']) player.y -= 5;
   if (keys['ArrowDown'] || keys['s']) player.y += 5;
@@ -176,13 +172,12 @@ function updatePlayer() {
   player.y = Math.max(0, Math.min(player.y, canvas.height - player.height));
 
   if (keys[' '] && gameRunning) {
-    if (Math.random() > 0.1) { // 発射頻度を落とす
+    if (Math.random() > 0.1) {
       bullets.push(new Bullet(player.x + player.width / 2, player.y, 6, -Math.PI / 2));
     }
   }
 }
 
-// ボス攻撃パターン
 function updateBoss() {
   boss.attackTimer++;
   if (boss.attackTimer >= boss.attackInterval) {
@@ -191,28 +186,25 @@ function updateBoss() {
     fireCircleBullets();
   }
 
-  // ボスの動き（大胆に動くように変更）
-  boss.x += Math.random() * 20 - 10; // 横方向により大きくランダムに動かす
-  boss.y += Math.random() * 10 - 5; // 縦方向にも大胆に動かす
-  // ボスがプレイヤーを追いかける動き
-  if (player.x > boss.x) boss.x += 1;
-  if (player.x < boss.x) boss.x -= 1;
-  if (player.y > boss.y) boss.y += 1;
-  if (player.y < boss.y) boss.y -= 1;
+  let angle = Math.atan2(boss.targetY - boss.y, boss.targetX - boss.x);
+  boss.x += Math.cos(angle) * boss.speed;
+  boss.y += Math.sin(angle) * boss.speed;
+
+  if (Math.abs(boss.x - boss.targetX) < 5 && Math.abs(boss.y - boss.targetY) < 5) {
+    boss.targetX = Math.random() * canvas.width;
+    boss.targetY = Math.random() * canvas.height;
+  }
 }
 
-// ボス弾
 function fireCircleBullets() {
   const count = boss.spellActive ? 24 : 12;
   for (let i = 0; i < count; i++) {
     let angle = (Math.PI * 2 * i) / count;
-    // 赤い弾の大きさをランダムで変える
-    const isLarge = Math.random() < 0.1; // 10%の確率で大きい弾
+    const isLarge = Math.random() < 0.1;
     bossBullets.push(new Bullet(boss.x + boss.width/2, boss.y + boss.height, 2 + Math.random()*2, angle, true, isLarge));
   }
 }
 
-// 敵出現
 function spawnEnemy() {
   if (Math.random() < 0.02) {
     let x = Math.random() * (canvas.width - 30);
@@ -220,10 +212,8 @@ function spawnEnemy() {
   }
 }
 
-// 敵・弾・当たり判定など
 function checkCollisions() {
   bullets.forEach((b, i) => {
-    // 雑魚
     enemies.forEach((e, j) => {
       if (b.x > e.x && b.x < e.x + e.width && b.y > e.y && b.y < e.y + e.height) {
         enemies.splice(j, 1);
@@ -232,9 +222,8 @@ function checkCollisions() {
       }
     });
 
-    // ボス
     if (b.x > boss.x && b.x < boss.x + boss.width && b.y > boss.y && b.y < boss.y + boss.height) {
-      boss.hp -= 1;  // 弾のダメージを1に設定
+      boss.hp -= 1;
       bullets.splice(i, 1);
     }
   });
@@ -242,7 +231,7 @@ function checkCollisions() {
   bossBullets.forEach((b, i) => {
     if (b.x > player.x && b.x < player.x + player.width &&
         b.y > player.y && b.y < player.y + player.height) {
-      if (!player.shield) player.hp -= 10;
+      if (!player.shield) player.hp -= 5;
       bossBullets.splice(i, 1);
     }
   });
@@ -250,33 +239,30 @@ function checkCollisions() {
   enemies.forEach((e, i) => {
     if (e.x < player.x + player.width && e.x + e.width > player.x &&
         e.y < player.y + player.height && e.y + e.height > player.y) {
-      if (!player.shield) player.hp -= 20;
+      if (!player.shield) player.hp -= 10;
       enemies.splice(i, 1);
     }
   });
 }
 
-// ボスHPバーの描画（赤色のグラデーション）
 function drawBossHp() {
   let grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
-  grad.addColorStop(0, '#ff0000'); // 赤
-  grad.addColorStop(1, '#ff7f7f'); // 薄い赤
+  grad.addColorStop(0, '#ff0000');
+  grad.addColorStop(1, '#ff7f7f');
 
   ctx.fillStyle = 'black';
-  ctx.fillRect(0, 10, canvas.width, 10);  // ボスHPバーの上に少し隙間を開ける
+  ctx.fillRect(0, 10, canvas.width, 10);
 
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 10, canvas.width * (boss.hp / boss.maxHp), 10);  // ボスHPに応じた長さ
+  ctx.fillRect(0, 10, canvas.width * (boss.hp / boss.maxHp), 10);
 }
 
-// ボス名表示
 function drawBossName() {
   ctx.fillStyle = 'white';
   ctx.font = '30px Arial';
-  ctx.fillText('フランドール・スカーレット', canvas.width / 2 - 150, 40); // HPバーの上に名前を表示
+  ctx.fillText('フランドール・スカーレット', canvas.width / 2 - 150, 40);
 }
 
-// 背景
 function drawBackground() {
   let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
   grad.addColorStop(0, '#222244');
@@ -285,7 +271,6 @@ function drawBackground() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-// メインループ
 function update() {
   if (!gameRunning) return;
 
@@ -293,7 +278,7 @@ function update() {
   drawBackground();
   drawSpellEffect();
 
-  drawBossName(); // ボス名を描画
+  drawBossName();
 
   updatePlayer();
   ctx.drawImage(player.image, player.x, player.y, player.width, player.height);
@@ -303,7 +288,7 @@ function update() {
 
   updateBoss();
   ctx.drawImage(boss.image, boss.x, boss.y, boss.width, boss.height);
-  drawBossHp();  // HPバーを上部に描画
+  drawBossHp();
 
   spawnEnemy();
   enemies.forEach(e => { e.update(); e.draw(); });
@@ -321,7 +306,6 @@ function update() {
   requestAnimationFrame(update);
 }
 
-// ゲーム開始＆リトライ
 function startGame() {
   document.getElementById('startScreen').style.display = 'none';
   gameRunning = true;
@@ -332,20 +316,18 @@ function restartGame() {
   location.reload();
 }
 
-// ゲーム終了
 function endGame(cleared) {
   gameRunning = false;
   document.getElementById('endScreen').style.display = 'flex';
-  document.getElementById('endMessage').textContent = cleared ? 'ゲームクリア！' : 'ゲームオーバー';
   document.getElementById('finalScore').textContent = player.score;
-
-  // ハイスコア更新
   if (player.score > highScore) {
-    highScore = player.score;
-    localStorage.setItem('touhouHighScore', highScore);
+    localStorage.setItem('touhouHighScore', player.score);
+    document.getElementById('highScore').textContent = player.score;
+  } else {
+    document.getElementById('highScore').textContent = highScore;
   }
-  document.getElementById('highScore').textContent = highScore;
+  document.getElementById('endMessage').textContent = cleared ? 'ゲームクリア！' : 'ゲームオーバー';
 }
-</script>
+  </script>
 </body>
 </html>
