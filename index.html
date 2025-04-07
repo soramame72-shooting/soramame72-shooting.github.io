@@ -5,14 +5,8 @@
   <title>東方風シューティングゲーム</title>
   <link rel="icon" href="favicon.png" type="image/png">
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: 'Arial', sans-serif;
-    }
-    canvas {
-      display: block;
-    }
+    body { margin: 0; overflow: hidden; font-family: 'Arial', sans-serif; }
+    canvas { display: block; }
     #startScreen, #endScreen {
       position: absolute;
       top: 0; left: 0;
@@ -25,64 +19,32 @@
       align-items: center;
       z-index: 10;
     }
-    button {
-      padding: 10px 20px;
-      font-size: 20px;
-      margin-top: 20px;
-    }
-    h1 {
-      font-size: 50px;
-    }
-    #startScreen p, #endScreen p {
-      font-size: 24px;
-    }
-    #startScreen button, #endScreen button {
-      font-size: 24px;
-    }
-    #credit {
-      font-size: 18px;
-      margin-top: 20px;
-    }
-    .skin-select {
-      display: flex;
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-    .skin-select button {
-      font-size: 20px;
-    }
+    h1 { font-size: 50px; }
+    select, button { font-size: 20px; padding: 10px; margin-top: 20px; }
+    #credit { font-size: 18px; margin-top: 20px; }
   </style>
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
-
   <div id="startScreen">
     <h1>東方風シューティング</h1>
-    <p>スペースキーで弾を撃てます！</p>
-    <div class="skin-select">
-      <button onclick="selectSkin('reimu')">霊夢</button>
-      <button onclick="selectSkin('marisa')">魔理沙</button>
-    </div>
+    <p>キャラクターを選択してください:</p>
+    <select id="characterSelect">
+      <option value="reimu">霊夢</option>
+      <option value="marisa">魔理沙</option>
+    </select>
     <button onclick="startGame()">ゲーム開始</button>
     <div id="credit">
       <p>キャラクター立ち絵: <a href="https://twitter.com/_Hoshi_Ringo_" target="_blank">https://twitter.com/_Hoshi_Ringo_</a></p>
     </div>
   </div>
-
   <div id="endScreen" style="display:none;">
     <h1 id="endMessage"></h1>
     <p>スコア: <span id="finalScore"></span></p>
     <p>ハイスコア: <span id="highScore"></span></p>
     <button onclick="restartGame()">リトライ</button>
   </div>
-
   <script>
-let selectedSkin = 'reimu';
-
-function selectSkin(skin) {
-  selectedSkin = skin;
-}
-
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
@@ -97,11 +59,11 @@ const player = {
   y: canvas.height - 100,
   width: 100,
   height: 180,
-  hitboxSize: 20,
   hp: 100,
   score: 0,
   shield: false,
   image: new Image(),
+  hitbox: { x: 0, y: 0, r: 5 }
 };
 
 const boss = {
@@ -117,7 +79,7 @@ const boss = {
   targetY: Math.random() * canvas.height,
   speed: 2,
   spellActive: false,
-  image: new Image(),
+  image: new Image()
 };
 boss.image.src = 'boss.png';
 
@@ -182,6 +144,9 @@ function updatePlayer() {
   player.x = Math.max(0, Math.min(player.x, canvas.width - player.width));
   player.y = Math.max(0, Math.min(player.y, canvas.height - player.height));
 
+  player.hitbox.x = player.x + player.width / 2;
+  player.hitbox.y = player.y + player.height / 2;
+
   if (keys[' '] && gameRunning) {
     if (Math.random() > 0.1) {
       bullets.push(new Bullet(player.x + player.width / 2, player.y, 6, -Math.PI / 2));
@@ -218,8 +183,8 @@ function fireCircleBullets() {
 
 function spawnEnemy() {
   if (Math.random() < 0.02) {
-    let x = Math.random() * (canvas.width - 30);
-    enemies.push(new Enemy(x, -30));
+    let x = Math.random() * (canvas.width - 40);
+    enemies.push(new Enemy(x, -110));
   }
 }
 
@@ -240,20 +205,18 @@ function checkCollisions() {
   });
 
   bossBullets.forEach((b, i) => {
-    const centerX = player.x + player.width / 2;
-    const centerY = player.y + player.height / 2;
-    const dx = b.x - centerX;
-    const dy = b.y - centerY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    if (distance < player.hitboxSize) {
+    let dx = b.x - player.hitbox.x;
+    let dy = b.y - player.hitbox.y;
+    if (Math.sqrt(dx * dx + dy * dy) < player.hitbox.r) {
       if (!player.shield) player.hp -= 5;
       bossBullets.splice(i, 1);
     }
   });
 
   enemies.forEach((e, i) => {
-    if (e.x < player.x + player.width && e.x + e.width > player.x &&
-        e.y < player.y + player.height && e.y + e.height > player.y) {
+    let dx = (e.x + e.width / 2) - player.hitbox.x;
+    let dy = (e.y + e.height / 2) - player.hitbox.y;
+    if (Math.sqrt(dx * dx + dy * dy) < player.hitbox.r + 15) {
       if (!player.shield) player.hp -= 10;
       enemies.splice(i, 1);
     }
@@ -264,10 +227,8 @@ function drawBossHp() {
   let grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
   grad.addColorStop(0, '#ff0000');
   grad.addColorStop(1, '#ff7f7f');
-
   ctx.fillStyle = 'black';
   ctx.fillRect(0, 10, canvas.width, 10);
-
   ctx.fillStyle = grad;
   ctx.fillRect(0, 10, canvas.width * (boss.hp / boss.maxHp), 10);
 }
@@ -322,20 +283,17 @@ function update() {
 
 function startGame() {
   document.getElementById('startScreen').style.display = 'none';
-  gameRunning = true;
-
-  if (selectedSkin === 'reimu') {
+  const selection = document.getElementById('characterSelect').value;
+  if (selection === 'reimu') {
     player.image.src = 'reimu.png';
     player.width = 100;
     player.height = 180;
-    player.hitboxSize = 20;
   } else {
     player.image.src = 'marisa.png';
     player.width = 100;
     player.height = 100;
-    player.hitboxSize = 10;
   }
-
+  gameRunning = true;
   update();
 }
 
