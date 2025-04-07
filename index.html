@@ -28,20 +28,13 @@
     button {
       padding: 10px 20px;
       font-size: 20px;
-      margin-top: 20px;
-    }
-    @keyframes titleFadeIn {
-      0% { opacity: 0; }
-      100% { opacity: 1; }
+      margin: 10px;
     }
     h1 {
       font-size: 50px;
       animation: titleFadeIn 2s ease-in-out;
     }
     #startScreen p, #endScreen p {
-      font-size: 24px;
-    }
-    #startScreen button, #endScreen button {
       font-size: 24px;
     }
     #credit {
@@ -56,6 +49,11 @@
   <div id="startScreen">
     <h1>東方風シューティング</h1>
     <p>スペースキーで弾を撃てます！</p>
+    <div>
+      <label style="font-size: 24px;">キャラ選択:</label>
+      <button onclick="selectCharacter('reimu')">霊夢</button>
+      <button onclick="selectCharacter('marisa')">魔理沙</button>
+    </div>
     <button onclick="startGame()">ゲーム開始</button>
     <div id="credit">
       <p>キャラクター立ち絵: <a href="https://twitter.com/_Hoshi_Ringo_" target="_blank">https://twitter.com/_Hoshi_Ringo_</a></p>
@@ -79,6 +77,11 @@ let gameRunning = false;
 let bullets = [], bossBullets = [], enemies = [];
 let rewardMessage = '';
 let highScore = localStorage.getItem('touhouHighScore') || 0;
+let selectedCharacter = 'reimu';
+
+function selectCharacter(char) {
+  selectedCharacter = char;
+}
 
 const player = {
   x: canvas.width / 2,
@@ -90,7 +93,7 @@ const player = {
   shield: false,
   image: new Image(),
 };
-player.image.src = 'player.png';
+player.image.src = 'player_reimu.png';
 
 const boss = {
   x: canvas.width / 2 - 50,
@@ -212,6 +215,14 @@ function spawnEnemy() {
   }
 }
 
+function isHitPlayer(bullet) {
+  const hitboxSize = 10;
+  const px = player.x + player.width / 2;
+  const py = player.y + player.height / 2;
+  return (bullet.x > px - hitboxSize && bullet.x < px + hitboxSize &&
+          bullet.y > py - hitboxSize && bullet.y < py + hitboxSize);
+}
+
 function checkCollisions() {
   bullets.forEach((b, i) => {
     enemies.forEach((e, j) => {
@@ -229,16 +240,18 @@ function checkCollisions() {
   });
 
   bossBullets.forEach((b, i) => {
-    if (b.x > player.x && b.x < player.x + player.width &&
-        b.y > player.y && b.y < player.y + player.height) {
+    if (isHitPlayer(b)) {
       if (!player.shield) player.hp -= 5;
       bossBullets.splice(i, 1);
     }
   });
 
   enemies.forEach((e, i) => {
-    if (e.x < player.x + player.width && e.x + e.width > player.x &&
-        e.y < player.y + player.height && e.y + e.height > player.y) {
+    const hitboxSize = 10;
+    const px = player.x + player.width / 2;
+    const py = player.y + player.height / 2;
+    if (e.x < px + hitboxSize && e.x + e.width > px - hitboxSize &&
+        e.y < py + hitboxSize && e.y + e.height > py - hitboxSize) {
       if (!player.shield) player.hp -= 10;
       enemies.splice(i, 1);
     }
@@ -249,10 +262,8 @@ function drawBossHp() {
   let grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
   grad.addColorStop(0, '#ff0000');
   grad.addColorStop(1, '#ff7f7f');
-
   ctx.fillStyle = 'black';
   ctx.fillRect(0, 10, canvas.width, 10);
-
   ctx.fillStyle = grad;
   ctx.fillRect(0, 10, canvas.width * (boss.hp / boss.maxHp), 10);
 }
@@ -277,36 +288,32 @@ function update() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBackground();
   drawSpellEffect();
-
   drawBossName();
-
   updatePlayer();
   ctx.drawImage(player.image, player.x, player.y, player.width, player.height);
-
   bullets.forEach(b => { b.update(); b.draw(); });
   bossBullets.forEach(b => { b.update(); b.draw(); });
-
   updateBoss();
   ctx.drawImage(boss.image, boss.x, boss.y, boss.width, boss.height);
   drawBossHp();
-
   spawnEnemy();
   enemies.forEach(e => { e.update(); e.draw(); });
-
   checkCollisions();
-
   ctx.fillStyle = 'white';
   ctx.font = '30px Arial';
   ctx.fillText(`HP: ${player.hp}`, 20, 30);
   ctx.fillText(`Score: ${player.score}`, 20, 60);
-
   if (player.hp <= 0) endGame(false);
   if (boss.hp <= 0) endGame(true);
-
   requestAnimationFrame(update);
 }
 
 function startGame() {
+  if (selectedCharacter === 'reimu') {
+    player.image.src = 'player_reimu.png';
+  } else if (selectedCharacter === 'marisa') {
+    player.image.src = 'player_marisa.png';
+  }
   document.getElementById('startScreen').style.display = 'none';
   gameRunning = true;
   update();
