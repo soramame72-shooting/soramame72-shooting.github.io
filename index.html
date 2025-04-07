@@ -1,252 +1,323 @@
 <!DOCTYPE html>
 <html lang="ja">
+<link rel="icon" href="favicon.PNG" type="image/png">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>東方風シューティングゲーム</title>
   <style>
     body {
       margin: 0;
       overflow: hidden;
+      font-family: 'Arial', sans-serif;
     }
     canvas {
       display: block;
+    }
+    #startScreen, #endScreen {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 20px;
+      margin-top: 20px;
+    }
+    @keyframes titleFadeIn {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+    h1 {
+      font-size: 50px;
+      animation: titleFadeIn 2s ease-in-out;
+    }
+    #startScreen p, #endScreen p {
+      font-size: 24px;
+    }
+    #startScreen button, #endScreen button {
+      font-size: 24px;
+    }
+    #credit {
+      font-size: 18px;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
+
+  <div id="startScreen">
+    <h1>東方風シューティング</h1>
+    <p>スペースキーで弾を撃てます！</p>
+    <button onclick="startGame()">ゲーム開始</button>
+    <div id="credit">
+      <p>キャラクター立ち絵: <a href="https://twitter.com/_Hoshi_Ringo_" target="_blank">https://twitter.com/_Hoshi_Ringo_</a></p>
+    </div>
+  </div>
+
+  <div id="endScreen" style="display:none;">
+    <h1 id="endMessage"></h1>
+    <p>スコア: <span id="finalScore"></span></p>
+    <p>ハイスコア: <span id="highScore"></span></p>
+    <button onclick="restartGame()">リトライ</button>
+  </div>
+
   <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-    // プレイヤーの設定
-    const player = {
-      x: canvas.width / 2,
-      y: canvas.height - 100,
-      width: 40,
-      height: 40,
-      hp: 100,
-      score: 0,
-      shield: false
-    };
+let gameRunning = false;
+let bullets = [], bossBullets = [], enemies = [];
+let rewardMessage = '';
+let highScore = localStorage.getItem('touhouHighScore') || 0;
 
-    // ボスの設定
-    const boss = {
-      x: canvas.width / 2 - 50,
-      y: 100,
-      width: 100,
-      height: 100,
-      hp: 100,
-      maxHp: 100,
-      attackPattern: '',
-      attackTimer: 0,
-      attackInterval: 60
-    };
+// プレイヤー
+const player = {
+  x: canvas.width / 2,
+  y: canvas.height - 100,
+  width: 40,
+  height: 40,
+  hp: 100,
+  score: 0,
+  shield: false,
+  image: new Image(),
+};
+player.image.src = 'player.png'; // プレイヤーの画像
 
-    // 弾の配列
-    let bullets = [];
-    let bossBullets = [];
+// ボス
+const boss = {
+  x: canvas.width / 2 - 50,
+  y: 100,
+  width: 100,
+  height: 100,
+  hp: 300,
+  maxHp: 300,
+  attackTimer: 0,
+  attackInterval: 60,
+  attackPattern: '',
+  spellActive: false,
+  image: new Image(),
+};
+boss.image.src = 'boss.png'; // ボスの画像
 
-    // アイテムの配列
-    const items = ['health', 'scoreBoost', 'shield'];
+let keys = {};
+window.addEventListener('keydown', e => keys[e.key] = true);
+window.addEventListener('keyup', e => keys[e.key] = false);
 
-    // プレイヤーの移動
-    let keys = {};
+// 弾クラス
+class Bullet {
+  constructor(x, y, speed, angle, fromBoss = false) {
+    this.x = x;
+    this.y = y;
+    this.speed = speed;
+    this.angle = angle;
+    this.fromBoss = fromBoss;
+  }
+  update() {
+    this.x += Math.cos(this.angle) * this.speed;
+    this.y += Math.sin(this.angle) * this.speed;
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = this.fromBoss ? 'red' : 'cyan';
+    ctx.fill();
+  }
+}
 
-    window.addEventListener('keydown', (e) => {
-      keys[e.key] = true;
+// 雑魚敵クラス
+class Enemy {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.width = 20;  // サイズを小さくしました
+    this.height = 20; // サイズを小さくしました
+    this.hp = 30;
+    this.speed = 2 + Math.random() * 1;
+    this.image = new Image();
+    this.image.src = 'enemy.png'; // 敵の画像
+  }
+  update() {
+    // 敵をランダムに動かす
+    this.x += Math.random() * 2 - 1; // 横方向にランダムに動く
+    this.y += this.speed; // 縦方向に進む
+  }
+  draw() {
+    ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+  }
+}
+
+// スペルカード演出（背景点滅）
+function drawSpellEffect() {
+  if (boss.spellActive) {
+    ctx.fillStyle = 'rgba(255, 0, 255, 0.1)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
+// プレイヤー移動＆攻撃
+function updatePlayer() {
+  if (keys['ArrowUp'] || keys['w']) player.y -= 5;
+  if (keys['ArrowDown'] || keys['s']) player.y += 5;
+  if (keys['ArrowLeft'] || keys['a']) player.x -= 5;
+  if (keys['ArrowRight'] || keys['d']) player.x += 5;
+
+  player.x = Math.max(0, Math.min(player.x, canvas.width - player.width));
+  player.y = Math.max(0, Math.min(player.y, canvas.height - player.height));
+
+  if (keys[' '] && gameRunning) {
+    bullets.push(new Bullet(player.x + player.width / 2, player.y, 6, -Math.PI / 2));
+  }
+}
+
+// ボス攻撃パターン
+function updateBoss() {
+  boss.attackTimer++;
+  if (boss.attackTimer >= boss.attackInterval) {
+    boss.attackTimer = 0;
+    boss.spellActive = Math.random() < 0.3;
+    fireCircleBullets();
+  }
+}
+
+// ボス弾
+function fireCircleBullets() {
+  const count = boss.spellActive ? 24 : 12;
+  for (let i = 0; i < count; i++) {
+    let angle = (Math.PI * 2 * i) / count;
+    bossBullets.push(new Bullet(boss.x + boss.width/2, boss.y + boss.height, 2 + Math.random()*2, angle, true));
+  }
+}
+
+// 敵出現
+function spawnEnemy() {
+  if (Math.random() < 0.02) {
+    let x = Math.random() * (canvas.width - 30);
+    enemies.push(new Enemy(x, -30));
+  }
+}
+
+// 敵・弾・当たり判定など
+function checkCollisions() {
+  bullets.forEach((b, i) => {
+    // 雑魚
+    enemies.forEach((e, j) => {
+      if (b.x > e.x && b.x < e.x + e.width && b.y > e.y && b.y < e.y + e.height) {
+        enemies.splice(j, 1);
+        bullets.splice(i, 1);
+        player.score += 100;
+      }
     });
-    window.addEventListener('keyup', (e) => {
-      keys[e.key] = false;
-    });
 
-    // 弾のクラス
-    class Bullet {
-      constructor(x, y, speed, angle) {
-        this.x = x;
-        this.y = y;
-        this.speed = speed;
-        this.angle = angle;
-      }
-
-      update() {
-        this.x += Math.cos(this.angle) * this.speed;
-        this.y += Math.sin(this.angle) * this.speed;
-      }
-
-      draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, 5, 0, Math.PI * 2);
-        ctx.fillStyle = 'red';
-        ctx.fill();
-      }
+    // ボス
+    if (b.x > boss.x && b.x < boss.x + boss.width && b.y > boss.y && b.y < boss.y + boss.height) {
+      boss.hp -= 2;
+      bullets.splice(i, 1);
     }
+  });
 
-    // プレイヤーの移動
-    function updatePlayer() {
-      if (keys['ArrowUp'] || keys['w']) player.y -= 5;
-      if (keys['ArrowDown'] || keys['s']) player.y += 5;
-      if (keys['ArrowLeft'] || keys['a']) player.x -= 5;
-      if (keys['ArrowRight'] || keys['d']) player.x += 5;
-
-      // プレイヤーが画面外に出ないように制限
-      player.x = Math.max(0, Math.min(player.x, canvas.width - player.width));
-      player.y = Math.max(0, Math.min(player.y, canvas.height - player.height));
-
-      // プレイヤーの弾を発射
-      if (keys[' '] || keys['Enter']) {
-        bullets.push(new Bullet(player.x + player.width / 2, player.y, 5, -Math.PI / 2));
-      }
+  bossBullets.forEach((b, i) => {
+    if (b.x > player.x && b.x < player.x + player.width &&
+        b.y > player.y && b.y < player.y + player.height) {
+      if (!player.shield) player.hp -= 10;
+      bossBullets.splice(i, 1);
     }
+  });
 
-    // ボスの攻撃パターン
-    const attackPatterns = ['straight', 'spread', 'circle', 'random'];
-
-    function getRandomAttackPattern() {
-      return attackPatterns[Math.floor(Math.random() * attackPatterns.length)];
+  enemies.forEach((e, i) => {
+    if (e.x < player.x + player.width && e.x + e.width > player.x &&
+        e.y < player.y + player.height && e.y + e.height > player.y) {
+      if (!player.shield) player.hp -= 20;
+      enemies.splice(i, 1);
     }
+  });
+}
 
-    function updateBoss() {
-      if (boss.attackTimer === 0) {
-        boss.attackPattern = getRandomAttackPattern();
-        boss.attackInterval = Math.floor(Math.random() * 60) + 30;
-      }
+// ボス体力バー
+function drawBossHp() {
+  ctx.fillStyle = 'black';
+  ctx.fillRect(boss.x, boss.y - 15, boss.width, 10);
+  ctx.fillStyle = 'lime';
+  ctx.fillRect(boss.x, boss.y - 15, boss.width * (boss.hp / boss.maxHp), 10);
+}
 
-      boss.attackTimer++;
-      if (boss.attackTimer >= boss.attackInterval) {
-        boss.attackTimer = 0;
-        if (boss.attackPattern === 'straight') fireStraightBullets();
-        else if (boss.attackPattern === 'spread') fireSpreadBullets();
-        else if (boss.attackPattern === 'circle') fireCircleBullets();
-        else if (boss.attackPattern === 'random') fireRandomBullets();
-      }
-    }
+// 背景
+function drawBackground() {
+  let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  grad.addColorStop(0, '#222244');
+  grad.addColorStop(1, '#000000');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
 
-    function fireStraightBullets() {
-      for (let i = 0; i < 5; i++) {
-        bossBullets.push(new Bullet(boss.x + boss.width / 2, boss.y + boss.height, 4, Math.PI / 2));
-      }
-    }
+// メインループ
+function update() {
+  if (!gameRunning) return;
 
-    function fireSpreadBullets() {
-      let bulletSpeed = Math.random() * 2 + 2;
-      let bulletCount = Math.floor(Math.random() * 10) + 5;
-      for (let i = 0; i < bulletCount; i++) {
-        let angle = Math.PI * i / (bulletCount / 2);
-        bossBullets.push(new Bullet(boss.x + boss.width / 2, boss.y + boss.height, bulletSpeed, angle));
-      }
-    }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBackground();
+  drawSpellEffect();
 
-    function fireCircleBullets() {
-      for (let i = 0; i < 360; i += 45) {
-        bossBullets.push(new Bullet(boss.x + boss.width / 2, boss.y + boss.height, 2, Math.PI * i / 180));
-      }
-    }
+  updatePlayer();
+  ctx.drawImage(player.image, player.x, player.y, player.width, player.height);
 
-    function fireRandomBullets() {
-      let bulletSpeed = Math.random() * 3 + 1;
-      let numBullets = Math.floor(Math.random() * 10) + 5;
-      for (let i = 0; i < numBullets; i++) {
-        let angle = Math.random() * Math.PI * 2;
-        bossBullets.push(new Bullet(boss.x + boss.width / 2, boss.y + boss.height, bulletSpeed, angle));
-      }
-    }
+  bullets.forEach(b => { b.update(); b.draw(); });
+  bossBullets.forEach(b => { b.update(); b.draw(); });
 
-    // ボスの体力バー
-    function drawBossHealthBar() {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(boss.x, boss.y - 20, boss.width, 10);
-      let healthWidth = (boss.hp / boss.maxHp) * boss.width;
-      ctx.fillStyle = 'green';
-      ctx.fillRect(boss.x, boss.y - 20, healthWidth, 10);
-    }
+  updateBoss();
+  ctx.drawImage(boss.image, boss.x, boss.y, boss.width, boss.height);
+  drawBossHp();
 
-    // アイテムの管理
-    function getRandomItem() {
-      return items[Math.floor(Math.random() * items.length)];
-    }
+  spawnEnemy();
+  enemies.forEach(e => { e.update(); e.draw(); });
 
-    function giveReward() {
-      let item = getRandomItem();
-      let message = '';
-      if (item === 'health') {
-        player.hp += 20;
-        message = 'You received a Health item!';
-      } else if (item === 'scoreBoost') {
-        player.score += 500;
-        message = 'You received a Score Boost item!';
-      } else if (item === 'shield') {
-        player.shield = true;
-        message = 'You received a Shield item!';
-      }
-      showRewardMessage(message);
-    }
+  checkCollisions();
 
-    // 報酬メッセージ
-    let rewardMessage = '';
+  ctx.fillStyle = 'white';
+  ctx.font = '30px Arial';  // スコアとHPのフォントサイズを大きくしました
+  ctx.fillText(`HP: ${player.hp}`, 20, 30);
+  ctx.fillText(`Score: ${player.score}`, 20, 60);
 
-    function showRewardMessage(message) {
-      rewardMessage = message;
-    }
+  if (player.hp <= 0) endGame(false);
+  if (boss.hp <= 0) endGame(true);
 
-    function drawRewardMessage() {
-      if (rewardMessage !== '') {
-        ctx.fillStyle = 'white';
-        ctx.font = '24px Arial';
-        ctx.fillText(rewardMessage, canvas.width / 2 - 100, canvas.height / 2);
-      }
-    }
+  requestAnimationFrame(update);
+}
 
-    // ゲームループ
-    function update() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+// ゲーム開始＆リトライ
+function startGame() {
+  document.getElementById('startScreen').style.display = 'none';
+  gameRunning = true;
+  update();
+}
 
-      // 背景描画
-      ctx.fillStyle = 'skyblue';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+function restartGame() {
+  location.reload();
+}
 
-      // プレイヤーの更新と描画
-      updatePlayer();
-      ctx.fillStyle = 'blue';
-      ctx.fillRect(player.x, player.y, player.width, player.height);
+// ゲーム終了
+function endGame(cleared) {
+  gameRunning = false;
+  document.getElementById('endScreen').style.display = 'flex';
+  document.getElementById('endMessage').textContent = cleared ? 'ゲームクリア！' : 'ゲームオーバー';
+  document.getElementById('finalScore').textContent = player.score;
 
-      // プレイヤーの弾の更新
-      bullets.forEach((bullet, index) => {
-        bullet.update();
-        bullet.draw();
-        if (bullet.y < 0) bullets.splice(index, 1);
-      });
-
-      // ボスの更新
-      updateBoss();
-      ctx.fillStyle = 'red';
-      ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
-
-      // ボスの弾の更新
-      bossBullets.forEach((bullet, index) => {
-        bullet.update();
-        bullet.draw();
-        if (bullet.y > canvas.height) bossBullets.splice(index, 1);
-      });
-
-      // ボスの体力バーの描画
-      drawBossHealthBar();
-
-      // 報酬メッセージの描画
-      drawRewardMessage();
-    }
-
-    // ゲームループ開始
-    function loop() {
-      update();
-      requestAnimationFrame(loop);
-    }
-
-    loop();
-
-  </script>
+  // ハイスコア更新
+  if (player.score > highScore) {
+    highScore = player.score;
+    localStorage.setItem('touhouHighScore', highScore);
+  }
+  document.getElementById('highScore').textContent = highScore;
+}
+</script>
 </body>
 </html>
