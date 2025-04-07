@@ -115,12 +115,13 @@ window.addEventListener('keyup', e => keys[e.key] = false);
 
 // 弾クラス
 class Bullet {
-  constructor(x, y, speed, angle, fromBoss = false) {
+  constructor(x, y, speed, angle, fromBoss = false, isLarge = false) {
     this.x = x;
     this.y = y;
     this.speed = speed;
     this.angle = angle;
     this.fromBoss = fromBoss;
+    this.isLarge = isLarge; // 大きさを管理
   }
   update() {
     this.x += Math.cos(this.angle) * this.speed;
@@ -128,7 +129,7 @@ class Bullet {
   }
   draw() {
     ctx.beginPath();
-    ctx.arc(this.x, this.y, 5, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, this.isLarge ? 10 : 5, 0, Math.PI * 2); // 大きさを変更
     ctx.fillStyle = this.fromBoss ? 'red' : 'cyan';
     ctx.fill();
   }
@@ -175,7 +176,9 @@ function updatePlayer() {
   player.y = Math.max(0, Math.min(player.y, canvas.height - player.height));
 
   if (keys[' '] && gameRunning) {
-    bullets.push(new Bullet(player.x + player.width / 2, player.y, 6, -Math.PI / 2));
+    if (Math.random() > 0.1) { // 発射頻度を落とす
+      bullets.push(new Bullet(player.x + player.width / 2, player.y, 6, -Math.PI / 2));
+    }
   }
 }
 
@@ -198,7 +201,9 @@ function fireCircleBullets() {
   const count = boss.spellActive ? 24 : 12;
   for (let i = 0; i < count; i++) {
     let angle = (Math.PI * 2 * i) / count;
-    bossBullets.push(new Bullet(boss.x + boss.width/2, boss.y + boss.height, 2 + Math.random()*2, angle, true));
+    // 赤い弾の大きさをランダムで変える
+    const isLarge = Math.random() < 0.1; // 10%の確率で大きい弾
+    bossBullets.push(new Bullet(boss.x + boss.width/2, boss.y + boss.height, 2 + Math.random()*2, angle, true, isLarge));
   }
 }
 
@@ -253,10 +258,17 @@ function drawBossHp() {
   grad.addColorStop(1, '#ff7f7f'); // 薄い赤
 
   ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, canvas.width, 10);  // 画面上部に固定
+  ctx.fillRect(0, 10, canvas.width, 10);  // ボスHPバーの上に少し隙間を開ける
 
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, canvas.width * (boss.hp / boss.maxHp), 10);  // ボスHPに応じた長さ
+  ctx.fillRect(0, 10, canvas.width * (boss.hp / boss.maxHp), 10);  // ボスHPに応じた長さ
+}
+
+// ボス名表示
+function drawBossName() {
+  ctx.fillStyle = 'white';
+  ctx.font = '30px Arial';
+  ctx.fillText('フランドール・スカーレット', canvas.width / 2 - 150, 40); // HPバーの上に名前を表示
 }
 
 // 背景
@@ -275,6 +287,8 @@ function update() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBackground();
   drawSpellEffect();
+
+  drawBossName(); // ボス名を描画
 
   updatePlayer();
   ctx.drawImage(player.image, player.x, player.y, player.width, player.height);
