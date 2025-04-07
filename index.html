@@ -28,18 +28,28 @@
     button {
       padding: 10px 20px;
       font-size: 20px;
-      margin: 10px;
+      margin-top: 20px;
     }
     h1 {
       font-size: 50px;
-      animation: titleFadeIn 2s ease-in-out;
     }
     #startScreen p, #endScreen p {
+      font-size: 24px;
+    }
+    #startScreen button, #endScreen button {
       font-size: 24px;
     }
     #credit {
       font-size: 18px;
       margin-top: 20px;
+    }
+    .skin-select {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .skin-select button {
+      font-size: 20px;
     }
   </style>
 </head>
@@ -49,10 +59,9 @@
   <div id="startScreen">
     <h1>東方風シューティング</h1>
     <p>スペースキーで弾を撃てます！</p>
-    <div>
-      <label style="font-size: 24px;">キャラ選択:</label>
-      <button onclick="selectCharacter('reimu')">霊夢</button>
-      <button onclick="selectCharacter('marisa')">魔理沙</button>
+    <div class="skin-select">
+      <button onclick="selectSkin('reimu')">霊夢</button>
+      <button onclick="selectSkin('marisa')">魔理沙</button>
     </div>
     <button onclick="startGame()">ゲーム開始</button>
     <div id="credit">
@@ -68,6 +77,12 @@
   </div>
 
   <script>
+let selectedSkin = 'reimu';
+
+function selectSkin(skin) {
+  selectedSkin = skin;
+}
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
@@ -75,25 +90,19 @@ canvas.height = window.innerHeight;
 
 let gameRunning = false;
 let bullets = [], bossBullets = [], enemies = [];
-let rewardMessage = '';
 let highScore = localStorage.getItem('touhouHighScore') || 0;
-let selectedCharacter = 'reimu';
-
-function selectCharacter(char) {
-  selectedCharacter = char;
-}
 
 const player = {
   x: canvas.width / 2,
   y: canvas.height - 100,
   width: 100,
   height: 180,
+  hitboxSize: 20,
   hp: 100,
   score: 0,
   shield: false,
   image: new Image(),
 };
-player.image.src = 'player_reimu.png';
 
 const boss = {
   x: canvas.width / 2 - 50,
@@ -107,7 +116,6 @@ const boss = {
   targetX: Math.random() * canvas.width,
   targetY: Math.random() * canvas.height,
   speed: 2,
-  attackPattern: '',
   spellActive: false,
   image: new Image(),
 };
@@ -215,14 +223,6 @@ function spawnEnemy() {
   }
 }
 
-function isHitPlayer(bullet) {
-  const hitboxSize = 10;
-  const px = player.x + player.width / 2;
-  const py = player.y + player.height / 2;
-  return (bullet.x > px - hitboxSize && bullet.x < px + hitboxSize &&
-          bullet.y > py - hitboxSize && bullet.y < py + hitboxSize);
-}
-
 function checkCollisions() {
   bullets.forEach((b, i) => {
     enemies.forEach((e, j) => {
@@ -240,18 +240,20 @@ function checkCollisions() {
   });
 
   bossBullets.forEach((b, i) => {
-    if (isHitPlayer(b)) {
+    const centerX = player.x + player.width / 2;
+    const centerY = player.y + player.height / 2;
+    const dx = b.x - centerX;
+    const dy = b.y - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance < player.hitboxSize) {
       if (!player.shield) player.hp -= 5;
       bossBullets.splice(i, 1);
     }
   });
 
   enemies.forEach((e, i) => {
-    const hitboxSize = 10;
-    const px = player.x + player.width / 2;
-    const py = player.y + player.height / 2;
-    if (e.x < px + hitboxSize && e.x + e.width > px - hitboxSize &&
-        e.y < py + hitboxSize && e.y + e.height > py - hitboxSize) {
+    if (e.x < player.x + player.width && e.x + e.width > player.x &&
+        e.y < player.y + player.height && e.y + e.height > player.y) {
       if (!player.shield) player.hp -= 10;
       enemies.splice(i, 1);
     }
@@ -262,8 +264,10 @@ function drawBossHp() {
   let grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
   grad.addColorStop(0, '#ff0000');
   grad.addColorStop(1, '#ff7f7f');
+
   ctx.fillStyle = 'black';
   ctx.fillRect(0, 10, canvas.width, 10);
+
   ctx.fillStyle = grad;
   ctx.fillRect(0, 10, canvas.width * (boss.hp / boss.maxHp), 10);
 }
@@ -289,33 +293,49 @@ function update() {
   drawBackground();
   drawSpellEffect();
   drawBossName();
+
   updatePlayer();
   ctx.drawImage(player.image, player.x, player.y, player.width, player.height);
+
   bullets.forEach(b => { b.update(); b.draw(); });
   bossBullets.forEach(b => { b.update(); b.draw(); });
+
   updateBoss();
   ctx.drawImage(boss.image, boss.x, boss.y, boss.width, boss.height);
   drawBossHp();
+
   spawnEnemy();
   enemies.forEach(e => { e.update(); e.draw(); });
+
   checkCollisions();
+
   ctx.fillStyle = 'white';
   ctx.font = '30px Arial';
   ctx.fillText(`HP: ${player.hp}`, 20, 30);
   ctx.fillText(`Score: ${player.score}`, 20, 60);
+
   if (player.hp <= 0) endGame(false);
   if (boss.hp <= 0) endGame(true);
+
   requestAnimationFrame(update);
 }
 
 function startGame() {
-  if (selectedCharacter === 'reimu') {
-    player.image.src = 'player_reimu.png';
-  } else if (selectedCharacter === 'marisa') {
-    player.image.src = 'player_marisa.png';
-  }
   document.getElementById('startScreen').style.display = 'none';
   gameRunning = true;
+
+  if (selectedSkin === 'reimu') {
+    player.image.src = 'reimu.png';
+    player.width = 100;
+    player.height = 180;
+    player.hitboxSize = 20;
+  } else {
+    player.image.src = 'marisa.png';
+    player.width = 100;
+    player.height = 100;
+    player.hitboxSize = 10;
+  }
+
   update();
 }
 
