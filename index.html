@@ -192,7 +192,7 @@ function updateBoss() {
 
   if (Math.abs(boss.x - boss.targetX) < 5 && Math.abs(boss.y - boss.targetY) < 5) {
     boss.targetX = Math.random() * canvas.width;
-    boss.targetY = Math.random() * canvas.height;
+    boss.targetY = Math.random() * (canvas.height * 0.25) + canvas.height * 0.25;
   }
 }
 
