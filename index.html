@@ -112,8 +112,8 @@ player.image.src = 'player.png';
 const boss = {
   x: canvas.width / 2 - 50,
   y: 100,
-  width: 100,
-  height: 180,
+  width: 55,
+  height: 85,
   hp: 2500,
   maxHp: 2500,
   attackTimer: 0,
@@ -163,8 +163,8 @@ class Enemy {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.width = 40;
-    this.height = 110;
+    this.width = 30;
+    this.height = 60;
     this.hp = 30;
     this.speed = 2 + Math.random() * 1;
     this.image = new Image();
@@ -182,11 +182,11 @@ class Enemy {
 function selectCharacter() {
   characterSelected = document.getElementById('characterSelect').value;
   if (characterSelected === 'marisa') {
-    player.width = 100;
-    player.height = 100;
+    player.width = 55;
+    player.height = 55;
   } else {
-    player.width = 100;
-    player.height = 180;
+    player.width = 85;
+    player.height = 85;
   }
 }
 
