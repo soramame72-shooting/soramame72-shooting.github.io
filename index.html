@@ -17,14 +17,14 @@
     }
     canvas {
       display: block;
-      width: 640px;
-      height: 960px;
+      width: 480px;
+      height: 800px;
       background: black;
     }
     #startScreen, #endScreen {
       position: absolute;
-      width: 640px;
-      height: 960px;
+      width: 480px;
+      height: 800px;
       background: rgba(0, 0, 0, 0.8);
       color: white;
       display: flex;
@@ -64,7 +64,7 @@
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="640" height="960"></canvas>
+  <canvas id="gameCanvas" width="480" height="800"></canvas>
 
   <div id="startScreen">
     <h1>東方風シューティング</h1>
@@ -305,86 +305,99 @@ function checkCollisions() {
 
 function drawBossHp() {
   let grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
-    grad.addColorStop(1, '#ff9900');
+  grad.addColorStop(0, '#ff0000');
+  grad.addColorStop(1, '#ff7f7f');
+
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 10, canvas.width, 10);
+
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 50, (canvas.width * boss.hp) / boss.maxHp, 10);
-  ctx.strokeStyle = '#000000';
-  ctx.strokeRect(0, 50, canvas.width, 10);
+  ctx.fillRect(0, 10, canvas.width * (boss.hp / boss.maxHp), 10);
 }
 
-function drawPlayerHp() {
-  let grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
-  grad.addColorStop(0, '#00ff00');
-  grad.addColorStop(1, '#009900');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 30, (canvas.width * player.hp) / 100, 10);
-  ctx.strokeStyle = '#000000';
-  ctx.strokeRect(0, 30, canvas.width, 10);
+function drawBossName() {
+  ctx.fillStyle = 'white';
+  ctx.font = '30px Arial';
+  ctx.fillText('フランドール・スカーレット', canvas.width / 2 - 150, 40);
 }
 
-function draw() {
+function drawBackground() {
+  let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  grad.addColorStop(0, '#222244');
+  grad.addColorStop(1, '#000000');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function update() {
+  if (!gameRunning) return;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBackground();
+  drawSpellEffect();
 
-  if (gameRunning) {
-    updatePlayer();
-    updateBoss();
-    spawnEnemy();
-    checkCollisions();
+  drawBossName();
 
-    bullets.forEach(b => { b.update(); b.draw(); });
-    bossBullets.forEach(b => { b.update(); b.draw(); });
-    enemies.forEach(e => { e.update(); e.draw(); });
+  updatePlayer();
+  ctx.drawImage(player.image, player.x, player.y, player.width, player.height);
 
-    drawSpellEffect();
-    drawPlayerHp();
-    drawBossHp();
+  bullets.forEach(b => { b.update(); b.draw(); });
+  bossBullets.forEach(b => { b.update(); b.draw(); });
 
-    ctx.drawImage(player.image, player.x, player.y, player.width, player.height);
-    ctx.drawImage(boss.image, boss.x, boss.y, boss.width, boss.height);
+  updateBoss();
+  ctx.drawImage(boss.image, boss.x, boss.y, boss.width, boss.height);
+  drawBossHp();
 
-    if (player.hp <= 0) {
-      endGame();
-    }
-  }
-}
+  spawnEnemy();
+  enemies.forEach(e => { e.update(); e.draw(); });
 
-function endGame() {
-  gameRunning = false;
-  document.getElementById('finalScore').innerText = player.score;
-  document.getElementById('highScore').innerText = Math.max(player.score, highScore);
-  document.getElementById('endMessage').innerText = 'ゲームオーバー';
-  document.getElementById('startScreen').style.display = 'none';
-  document.getElementById('endScreen').style.display = 'flex';
-}
+  checkCollisions();
 
-function restartGame() {
-  player.hp = 100;
-  player.score = 0;
-  enemies = [];
-  bullets = [];
-  bossBullets = [];
-  gameRunning = true;
-  document.getElementById('startScreen').style.display = 'none';
-  document.getElementById('endScreen').style.display = 'none';
-  startGame();
+  ctx.fillStyle = 'white';
+  ctx.font = '30px Arial';
+  ctx.fillText(`HP: ${player.hp}`, 20, 30);
+  ctx.fillText(`Score: ${player.score}`, 20, 60);
+
+  if (player.hp <= 0) endGame(false);
+  if (boss.hp <= 0) endGame(true);
+
+  requestAnimationFrame(update);
 }
 
 function startGame() {
-  gameRunning = true;
-  player.x = canvas.width / 2;
-  player.y = canvas.height - 100;
+  selectCharacter();
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('endScreen').style.display = 'none';
-  requestAnimationFrame(gameLoop);
+  gameRunning = true;
+  player.hp = 100;
+  player.score = 0;
+  player.bombCooldown = 0;
+  player.invincibleTime = 0;
+  player.shield = false;
+  boss.hp = boss.maxHp;
+  boss.attackTimer = 0;
+  enemies = [];
+  bullets = [];
+  bossBullets = [];
+  update();
 }
 
-function gameLoop() {
-  draw();
-  if (gameRunning) {
-    requestAnimationFrame(gameLoop);
+function restartGame() {
+  location.reload();
+}
+
+function endGame(cleared) {
+  gameRunning = false;
+  document.getElementById('endScreen').style.display = 'flex';
+  document.getElementById('finalScore').textContent = player.score;
+  if (player.score > highScore) {
+    localStorage.setItem('touhouHighScore', player.score);
+    document.getElementById('highScore').textContent = player.score;
+  } else {
+    document.getElementById('highScore').textContent = highScore;
   }
+  document.getElementById('endMessage').textContent = cleared ? 'ゲームクリア！' : 'ゲームオーバー';
 }
-
 </script>
 </body>
 </html>
