@@ -254,7 +254,7 @@ function fireCircleBullets() {
   const count = boss.spellActive ? 24 : 12;
   for (let i = 0; i < count; i++) {
     let angle = (Math.PI * 2 * i) / count;
-    const isLarge = Math.random() < 0.1;
+    const isLarge = Math.random() < 0.5;
     bossBullets.push(new Bullet(boss.x + boss.width/2, boss.y + boss.height, 2 + Math.random()*2, angle, true, isLarge));
   }
 }
