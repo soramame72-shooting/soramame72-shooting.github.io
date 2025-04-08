@@ -106,8 +106,9 @@ const player = {
   score: 0,
   shield: false,
   image: new Image(),
+  bombCooldown: 0,
+  invincibleTime: 0
 };
-player.image.src = 'player.png';
 
 const boss = {
   x: canvas.width / 2 - 50,
@@ -181,6 +182,15 @@ class Enemy {
 
 function selectCharacter() {
   characterSelected = document.getElementById('characterSelect').value;
+  if (characterSelected === 'marisa') {
+    player.width = 55;
+    player.height = 55;
+    player.image.src = 'marisa.png';
+  } else {
+    player.width = 85;
+    player.height = 85;
+    player.image.src = 'reimu.png';
+  }
 }
 
 function drawSpellEffect() {
@@ -204,15 +214,22 @@ function updatePlayer() {
       bullets.push(new Bullet(player.x + player.width / 2, player.y, 6, -Math.PI / 2));
     }
   }
-}
 
-function drawPlayerHitbox() {
-  const hitboxX = player.x + player.width / 2;
-  const hitboxY = player.y + player.height / 2;
-  ctx.beginPath();
-  ctx.arc(hitboxX, hitboxY, 3, 0, Math.PI * 2);
-  ctx.fillStyle = 'white';
-  ctx.fill();
+  if (keys['Shift'] && player.bombCooldown <= 0) {
+    bossBullets = [];
+    player.shield = true;
+    player.invincibleTime = 120;
+    player.bombCooldown = 300;
+  }
+
+  if (player.invincibleTime > 0) {
+    player.invincibleTime--;
+    if (player.invincibleTime === 0) player.shield = false;
+  }
+
+  if (player.bombCooldown > 0) {
+    player.bombCooldown--;
+  }
 }
 
 function updateBoss() {
@@ -323,7 +340,6 @@ function update() {
 
   updatePlayer();
   ctx.drawImage(player.image, player.x, player.y, player.width, player.height);
-  drawPlayerHitbox();
 
   bullets.forEach(b => { b.update(); b.draw(); });
   bossBullets.forEach(b => { b.update(); b.draw(); });
@@ -349,27 +365,20 @@ function update() {
 }
 
 function startGame() {
+  selectCharacter();
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('endScreen').style.display = 'none';
   gameRunning = true;
   player.hp = 100;
   player.score = 0;
+  player.bombCooldown = 0;
+  player.invincibleTime = 0;
+  player.shield = false;
   boss.hp = boss.maxHp;
   boss.attackTimer = 0;
   enemies = [];
   bullets = [];
   bossBullets = [];
-
-  if (characterSelected === 'marisa') {
-    player.width = 100;
-    player.height = 100;
-    player.image.src = 'marisa.png';
-  } else {
-    player.width = 85;
-    player.height = 85;
-    player.image.src = 'reimu.png';
-  }
-
   update();
 }
 
