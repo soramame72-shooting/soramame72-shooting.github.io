@@ -8,32 +8,28 @@
     html, body {
       margin: 0;
       padding: 0;
-      height: 100%;
       background: black;
       font-family: 'Arial', sans-serif;
       overflow: hidden;
+      height: 100%;
     }
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    #gameWrapper {
-      width: 100%;
-      max-width: 480px;
-      aspect-ratio: 3/5;
-      position: relative;
+    #container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(1);
+      transform-origin: top left;
     }
     canvas {
-      width: 100%;
-      height: 100%;
-      background: black;
       display: block;
+      background: black;
     }
     #startScreen, #endScreen {
       position: absolute;
-      width: 100%;
-      height: 100%;
+      top: 0;
+      left: 0;
+      width: 480px;
+      height: 800px;
       background: rgba(0, 0, 0, 0.8);
       color: white;
       display: flex;
@@ -42,36 +38,42 @@
       align-items: center;
       z-index: 10;
     }
-    h1 {
-      font-size: 2em;
-      animation: titleFadeIn 2s ease-in-out;
-    }
-    #startScreen p, #endScreen p {
-      font-size: 1.2em;
-    }
     button {
       padding: 10px 20px;
-      font-size: 1.2em;
+      font-size: 20px;
       margin-top: 20px;
-    }
-    #credit {
-      font-size: 0.9em;
-      margin-top: 20px;
-      text-align: center;
-    }
-    select {
-      font-size: 1em;
-      margin-top: 20px;
-      padding: 10px;
     }
     @keyframes titleFadeIn {
       0% { opacity: 0; }
       100% { opacity: 1; }
     }
+    h1 {
+      font-size: 50px;
+      animation: titleFadeIn 2s ease-in-out;
+    }
+    #startScreen p, #endScreen p {
+      font-size: 24px;
+    }
+    #startScreen button, #endScreen button {
+      font-size: 24px;
+    }
+    #credit {
+      font-size: 16px;
+      margin-top: 20px;
+      text-align: center;
+    }
+    select {
+      font-size: 24px;
+      margin-top: 20px;
+      padding: 10px;
+    }
+    a {
+      color: lightblue;
+    }
   </style>
 </head>
 <body>
-  <div id="gameWrapper">
+  <div id="container">
     <canvas id="gameCanvas" width="480" height="800"></canvas>
 
     <div id="startScreen">
@@ -85,7 +87,7 @@
       <button onclick="startGame()">ゲーム開始</button>
       <div id="credit">
         <p>キャラクター立ち絵: <a href="https://twitter.com/_Hoshi_Ringo_" target="_blank">https://twitter.com/_Hoshi_Ringo_</a></p>
-        <p>音楽：<a href="http://ajapabgm.html.xdomain.jp/" target="_blank">http://ajapabgm.html.xdomain.jp/</a></p>
+        <p>音楽: <a href="http://ajapabgm.html.xdomain.jp/" target="_blank">http://ajapabgm.html.xdomain.jp/</a></p>
       </div>
     </div>
 
@@ -102,11 +104,10 @@
   <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const bgm = document.getElementById('bgm');
+    const audio = document.getElementById('bgm');
 
     let gameRunning = false;
     let bullets = [], bossBullets = [], enemies = [];
-    let rewardMessage = '';
     let highScore = localStorage.getItem('touhouHighScore') || 0;
     let characterSelected = 'reimu';
 
@@ -142,9 +143,7 @@
 
     let keys = {};
     window.addEventListener('keydown', function(e) {
-      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) {
-        e.preventDefault();
-      }
+      if (e.key === ' ' && gameRunning) e.preventDefault();
       keys[e.key] = true;
     });
     window.addEventListener('keyup', function(e) {
@@ -239,9 +238,7 @@
         if (player.invincibleTime === 0) player.shield = false;
       }
 
-      if (player.bombCooldown > 0) {
-        player.bombCooldown--;
-      }
+      if (player.bombCooldown > 0) player.bombCooldown--;
     }
 
     function updateBoss() {
@@ -327,8 +324,8 @@
 
     function drawBossName() {
       ctx.fillStyle = 'white';
-      ctx.font = '20px Arial';
-      ctx.fillText('フランドール・スカーレット', canvas.width / 2 - 100, 40);
+      ctx.font = '30px Arial';
+      ctx.fillText('フランドール・スカーレット', canvas.width / 2 - 150, 40);
     }
 
     function drawBackground() {
@@ -341,6 +338,7 @@
 
     function update() {
       if (!gameRunning) return;
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawBackground();
       drawSpellEffect();
@@ -362,7 +360,7 @@
       checkCollisions();
 
       ctx.fillStyle = 'white';
-      ctx.font = '20px Arial';
+      ctx.font = '30px Arial';
       ctx.fillText(`HP: ${player.hp}`, 20, 30);
       ctx.fillText(`Score: ${player.score}`, 20, 60);
 
@@ -376,8 +374,6 @@
       selectCharacter();
       document.getElementById('startScreen').style.display = 'none';
       document.getElementById('endScreen').style.display = 'none';
-      bgm.currentTime = 0;
-      bgm.play();
       gameRunning = true;
       player.hp = 100;
       player.score = 0;
@@ -389,6 +385,8 @@
       enemies = [];
       bullets = [];
       bossBullets = [];
+      audio.currentTime = 0;
+      audio.play();
       update();
     }
 
@@ -397,8 +395,8 @@
     }
 
     function endGame(cleared) {
-      bgm.pause();
       gameRunning = false;
+      audio.pause();
       document.getElementById('endScreen').style.display = 'flex';
       document.getElementById('finalScore').textContent = player.score;
       if (player.score > highScore) {
@@ -409,6 +407,17 @@
       }
       document.getElementById('endMessage').textContent = cleared ? 'ゲームクリア！' : 'ゲームオーバー';
     }
+
+    function resize() {
+      const container = document.getElementById('container');
+      const scaleX = window.innerWidth / 480;
+      const scaleY = window.innerHeight / 800;
+      const scale = Math.min(scaleX, scaleY);
+      container.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    }
+
+    window.addEventListener('resize', resize);
+    window.addEventListener('load', resize);
   </script>
 </body>
 </html>
