@@ -270,7 +270,7 @@ function checkCollisions() {
   bossBullets.forEach((b, i) => {
     if (b.x > hitboxX && b.x < hitboxX + hitboxSize &&
         b.y > hitboxY && b.y < hitboxY + hitboxSize) {
-      if (!player.shield) player.hp -= 5;
+      if (!player.shield) player.hp -= 10;
       bossBullets.splice(i, 1);
     }
   });
@@ -278,7 +278,7 @@ function checkCollisions() {
   enemies.forEach((e, i) => {
     if (e.x < hitboxX + hitboxSize && e.x + e.width > hitboxX &&
         e.y < hitboxY + hitboxSize && e.y + e.height > hitboxY) {
-      if (!player.shield) player.hp -= 10;
+      if (!player.shield) player.hp -= 15
       enemies.splice(i, 1);
     }
   });
