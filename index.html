@@ -108,7 +108,6 @@ const ctx = canvas.getContext('2d');
 
 let gameRunning = false;
 let bullets = [], bossBullets = [], enemies = [];
-let rewardMessage = '';
 let highScore = localStorage.getItem('touhouHighScore') || 0;
 let characterSelected = 'reimu';
 
@@ -208,11 +207,11 @@ function selectCharacter() {
   }
 }
 
-function drawSpellEffect() {
-  if (boss.spellActive) {
-    ctx.fillStyle = 'rgba(255, 0, 255, 0.1)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
+function triggerBombFlash() {
+  const flashElement = document.createElement('div');
+  flashElement.classList.add('flash');
+  document.body.appendChild(flashElement);
+  setTimeout(() => flashElement.remove(), 500);
 }
 
 function updatePlayer() {
@@ -235,7 +234,7 @@ function updatePlayer() {
     player.shield = true;
     player.invincibleTime = 120;
     player.bombCooldown = 300;
-    triggerBombFlash(); // ボム発動時にフラッシュをトリガー
+    triggerBombFlash();
   }
 
   if (player.invincibleTime > 0) {
@@ -246,13 +245,6 @@ function updatePlayer() {
   if (player.bombCooldown > 0) {
     player.bombCooldown--;
   }
-}
-
-function triggerBombFlash() {
-  const flashElement = document.createElement('div');
-  flashElement.classList.add('flash');
-  canvas.appendChild(flashElement);
-  setTimeout(() => flashElement.remove(), 500); // フラッシュアニメーションの時間
 }
 
 function updateBoss() {
@@ -345,30 +337,53 @@ function restartGame() {
   player.score = 0;
   player.x = canvas.width / 2;
   player.y = canvas.height - 100;
-  enemies = [];
   bullets = [];
   bossBullets = [];
-  boss.hp = boss.maxHp;
+  enemies = [];
   gameRunning = true;
+  document.getElementById('startScreen').style.display = 'none';
   document.getElementById('endScreen').style.display = 'none';
+  requestAnimationFrame(gameLoop);
 }
 
 function startGame() {
   document.getElementById('startScreen').style.display = 'none';
   gameRunning = true;
-  spawnEnemy();
-  setInterval(() => {
-    if (gameRunning) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawSpellEffect();
-      updatePlayer();
-      updateBoss();
-      checkCollisions();
-      drawGameOver();
-    }
-  }, 1000 / 60);
+  requestAnimationFrame(gameLoop);
 }
 
-  </script>
+function gameLoop() {
+  if (!gameRunning) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  updatePlayer();
+  updateBoss();
+  spawnEnemy();
+  checkCollisions();
+
+  ctx.drawImage(player.image, player.x, player.y, player.width, player.height);
+  ctx.drawImage(boss.image, boss.x, boss.y, boss.width, boss.height);
+
+  enemies.forEach(enemy => {
+    enemy.update();
+    enemy.draw();
+  });
+
+  bullets.forEach(bullet => {
+    bullet.update();
+    bullet.draw();
+  });
+
+  bossBullets.forEach(bullet => {
+    bullet.update();
+    bullet.draw();
+  });
+
+  drawGameOver();
+
+  requestAnimationFrame(gameLoop);
+}
+
+    </script>
 </body>
 </html>
