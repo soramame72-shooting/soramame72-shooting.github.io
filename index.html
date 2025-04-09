@@ -15,10 +15,10 @@
     }
     #container {
       position: absolute;
-      botton: 0;
+      top: 50%;
       left: 50%;
-      transform: translate(-50%) scale(1);
-      transform-origin: botton left;
+      transform: translate(-50%, -50%) scale(1);
+      transform-origin: center center;
     }
     canvas {
       display: block;
@@ -424,7 +424,7 @@ function checkDeviceAndSize() {
       const scaleX = window.innerWidth / 480;
       const scaleY = window.innerHeight / 800;
       const scale = Math.min(scaleX, scaleY);
-      container.style.transform = `translate(-50%) scale(${scale})`;
+      container.style.transform = `translate(-50%, -50%) scale(${scale})`;
     }
 
     window.addEventListener('resize', resize);
