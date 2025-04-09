@@ -15,10 +15,10 @@
     }
     #container {
       position: absolute;
-      top: 50%;
+      top: 0%;
       left: 50%;
-      transform: translate(-50%, -50%) scale(1);
-      transform-origin: top left;
+      transform: translate(-50%) scale(1);
+      transform-origin: bottun left;
     }
     canvas {
       display: block;
@@ -28,8 +28,8 @@
       position: absolute;
       top: 0;
       left: 0;
-      width: 380px;
-      height: 700px;
+      width: 480px;
+      height: 800px;
       background: rgba(0, 0, 0, 0.8);
       color: white;
       display: flex;
@@ -74,7 +74,7 @@
 </head>
 <body>
   <div id="container">
-    <canvas id="gameCanvas" width="380" height="700"></canvas>
+    <canvas id="gameCanvas" width="480" height="800"></canvas>
 
     <div id="startScreen">
       <h1>東方風シューティング</h1>
@@ -129,8 +129,8 @@
       y: 100,
       width: 55,
       height: 85,
-      hp: 2500,
-      maxHp: 2500,
+      hp: 5000,
+      maxHp: 5000,
       attackTimer: 0,
       attackInterval: 60,
       targetX: Math.random() * canvas.width,
