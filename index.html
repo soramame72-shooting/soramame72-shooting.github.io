@@ -102,6 +102,17 @@
   <audio id="bgm" src="music.mp3" loop></audio>
 
   <script>
+function checkDeviceAndSize() {
+  const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight;
+
+  if (screenWidth <= 480 && screenHeight <= 800 || screenWidth <= 800 && screenHeight <= 480) {
+    alert('このゲームはPC向けに作成されているため、動作が安定しない可能性があります。');
+  } else if (!window.navigator.userAgent.match(/Windows|Macintosh|Linux/i)) {
+    alert('このゲームはPC向けに作成されているため、動作が安定しない可能性があります。');
+  }
+}
+      
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const audio = document.getElementById('bgm');
