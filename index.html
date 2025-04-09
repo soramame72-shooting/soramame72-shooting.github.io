@@ -171,46 +171,59 @@ function checkDeviceAndSize() {
     });
 
     class Bullet {
-      constructor(x, y, speed, angle, fromBoss = false, isLarge = false) {
-        this.x = x;
-        this.y = y;
-        this.speed = speed;
-        this.angle = angle;
-        this.fromBoss = fromBoss;
-        this.isLarge = isLarge;
-      }
-      update() {
-        this.x += Math.cos(this.angle) * this.speed;
-        this.y += Math.sin(this.angle) * this.speed;
-      }
-      draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.isLarge ? 10 : 5, 0, Math.PI * 2);
-        ctx.fillStyle = this.fromBoss ? 'red' : 'cyan';
-        ctx.fill();
+  constructor(x, y, speed, angle, fromBoss = false, isLarge = false) {
+    this.x = x;
+    this.y = y;
+    this.speed = speed;
+    this.angle = angle;
+    this.fromBoss = fromBoss;
+    this.isLarge = isLarge;
+  }
+  update() {
+    this.x += Math.cos(this.angle) * this.speed;
+    this.y += Math.sin(this.angle) * this.speed;
+
+    if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+      const index = bullets.indexOf(this);
+      if (index > -1) {
+        bullets.splice(index, 1);
       }
     }
-
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.isLarge ? 10 : 5, 0, Math.PI * 2);
+    ctx.fillStyle = this.fromBoss ? 'red' : 'cyan';
+    ctx.fill();
+  }
+}
     class Enemy {
-      constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.width = 30;
-        this.height = 60;
-        this.hp = 30;
-        this.speed = 2 + Math.random();
-        this.image = new Image();
-        this.image.src = 'enemy.png';
-      }
-      update() {
-        this.x += Math.random() * 2 - 1;
-        this.y += this.speed;
-      }
-      draw() {
-        ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.width = 30;
+    this.height = 60;
+    this.hp = 30;
+    this.speed = 2 + Math.random();
+    this.image = new Image();
+    this.image.src = 'enemy.png';
+  }
+  update() {
+    this.x += Math.random() * 2 - 1;
+    this.y += this.speed;
+
+    // 敵キャラが画面外に出たら削除
+    if (this.y > canvas.height) {
+      const index = enemies.indexOf(this);
+      if (index > -1) {
+        enemies.splice(index, 1);
       }
     }
-
+  }
+  draw() {
+    ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+  }
+}
     function selectCharacter() {
       characterSelected = document.getElementById('characterSelect').value;
       if (characterSelected === 'marisa') {
@@ -280,13 +293,30 @@ function checkDeviceAndSize() {
     }
 
     function fireCircleBullets() {
-      const count = boss.spellActive ? 24 : 12;
-      for (let i = 0; i < count; i++) {
-        let angle = (Math.PI * 2 * i) / count;
-        const isLarge = Math.random() < 0.5;
-        bossBullets.push(new Bullet(boss.x + boss.width/2, boss.y + boss.height, 2 + Math.random()*2, angle, true, isLarge));
-      }
-    }
+  const hpRatio = boss.hp / boss.maxHp;
+  const baseCount = 12;
+  const maxExtra = 24;
+  const count = baseCount + Math.floor((1 - hpRatio) * maxExtra);
+
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count;
+    const baseSpeed = 1 + Math.random() * 2;
+    const extraSpeed = (1 - hpRatio) * 2;
+    const speed = baseSpeed + extraSpeed;
+    const isLarge = Math.random() < 0.5;
+
+    bossBullets.push(
+      new Bullet(
+        boss.x + boss.width / 2,
+        boss.y + boss.height,
+        speed,
+        angle,
+        true,
+        isLarge
+      )
+    );
+  }
+}
 
     function spawnEnemy() {
       if (Math.random() < 0.02) {
