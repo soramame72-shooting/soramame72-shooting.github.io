@@ -212,7 +212,6 @@ function checkDeviceAndSize() {
     this.x += Math.random() * 2 - 1;
     this.y += this.speed;
 
-    // 敵キャラが画面外に出たら削除
     if (this.y > canvas.height) {
       const index = enemies.indexOf(this);
       if (index > -1) {
