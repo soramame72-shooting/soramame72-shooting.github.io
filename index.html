@@ -294,8 +294,8 @@ function checkDeviceAndSize() {
 
     function fireCircleBullets() {
   const hpRatio = boss.hp / boss.maxHp;
-  const baseCount = 12;
-  const maxExtra = 24;
+  const baseCount = 24;
+  const maxExtra = 48;
   const count = baseCount + Math.floor((1 - hpRatio) * maxExtra);
 
   for (let i = 0; i < count; i++) {
